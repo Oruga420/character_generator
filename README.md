@@ -2,6 +2,12 @@
 
 An advanced AI-powered character image generator that combines Groq AI for intelligent prompt generation with Replicate's Nano Banana models for high-quality image generation.
 
+## 🚀 Quick Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/Oruga420/character_generator&env=DATABASE_URL,GROQ_API_KEY,REPLICATE_API_TOKEN&envDescription=API%20keys%20required%20for%20Neon,%20Groq,%20and%20Replicate&envLink=https://github.com/Oruga420/character_generator/blob/main/.env.example&project-name=character-generator&repository-name=character-generator)
+
+**One-click deploy to Vercel** - Just add your API keys and you're live!
+
 ## Features
 
 - **Character Database**: Browse and select from 1000+ TV, anime, and movie characters (1980-2025)
