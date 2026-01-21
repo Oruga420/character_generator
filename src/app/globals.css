@@ -1,0 +1,91 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Custom Slider Styles */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+}
+
+/* Pink slider */
+.slider-pink::-webkit-slider-thumb {
+  background: linear-gradient(135deg, #ec4899, #be185d);
+}
+
+.slider-pink::-moz-range-thumb {
+  background: linear-gradient(135deg, #ec4899, #be185d);
+}
+
+/* Purple slider */
+.slider-purple::-webkit-slider-thumb {
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+}
+
+.slider-purple::-moz-range-thumb {
+  background: linear-gradient(135deg, #a855f7, #7e22ce);
+}
+
+/* Blue slider */
+.slider-blue::-webkit-slider-thumb {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+.slider-blue::-moz-range-thumb {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+}
+
+/* Orange slider */
+.slider-orange::-webkit-slider-thumb {
+  background: linear-gradient(135deg, #f97316, #c2410c);
+}
+
+.slider-orange::-moz-range-thumb {
+  background: linear-gradient(135deg, #f97316, #c2410c);
+}
+
+/* Green slider */
+.slider-green::-webkit-slider-thumb {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.slider-green::-moz-range-thumb {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
