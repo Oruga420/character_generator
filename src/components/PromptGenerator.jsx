@@ -8,6 +8,7 @@ export default function PromptGenerator({ characterData, attributes }) {
   const [generatingImages, setGeneratingImages] = useState([false, false, false, false]);
   const [generatedImages, setGeneratedImages] = useState([null, null, null, null]);
   const [error, setError] = useState('');
+  const [copiedIndex, setCopiedIndex] = useState(null);
 
   const generatePrompts = async () => {
     if (!characterData.characterName && !characterData.newCharacterDescription) {
@@ -19,21 +20,15 @@ export default function PromptGenerator({ characterData, attributes }) {
     setError('');
 
     try {
-      // Generate 4 different prompts with slight variations
       const promptPromises = Array(4).fill(null).map(async (_, index) => {
         const response = await fetch('/api/generate-prompt', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             characterData,
-            attributes: {
-              ...attributes,
-              // Add slight variation for each prompt
-              variation: index + 1,
-            },
+            attributes: { ...attributes, variation: index + 1 },
           }),
         });
-
         const data = await response.json();
         return data.prompt;
       });
@@ -89,34 +84,44 @@ export default function PromptGenerator({ characterData, attributes }) {
     }
   };
 
-  const copyPrompt = (prompt) => {
+  const copyPrompt = (prompt, index) => {
     navigator.clipboard.writeText(prompt);
+    setCopiedIndex(index);
+    setTimeout(() => setCopiedIndex(null), 2000);
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div className="w-full space-y-8">
       {/* Generate Button */}
       <div className="flex justify-center">
         <button
           onClick={generatePrompts}
           disabled={isGenerating}
-          className="px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-gray-600 disabled:to-gray-600 text-white font-bold text-lg rounded-xl shadow-lg transition-all transform hover:scale-105 disabled:cursor-not-allowed disabled:transform-none"
+          className={`group relative px-10 py-5 rounded-2xl font-bold text-lg transition-all ${
+            isGenerating
+              ? 'bg-[rgba(139,92,246,0.3)] text-gray-400 cursor-not-allowed'
+              : 'neon-button-primary hover:scale-105'
+          }`}
         >
           {isGenerating ? (
-            <span className="flex items-center space-x-2">
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              <span>Generating Prompts...</span>
+            <span className="flex items-center gap-3">
+              <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Generating Prompts with Groq AI...</span>
             </span>
           ) : (
-            '✨ Generate 4 Prompts with Groq'
+            <span className="flex items-center gap-3">
+              <span className="text-2xl">✨</span>
+              <span>Generate 4 Prompts with Groq</span>
+            </span>
           )}
         </button>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-900/50 border border-red-700 text-red-200 px-4 py-3 rounded-lg">
-          {error}
+        <div className="bg-[rgba(239,68,68,0.2)] border border-red-500/50 text-red-300 px-6 py-4 rounded-xl flex items-center gap-3">
+          <span className="text-xl">⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
@@ -125,77 +130,109 @@ export default function PromptGenerator({ characterData, attributes }) {
         {prompts.map((prompt, index) => (
           <div
             key={index}
-            className="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl"
+            className="prompt-card group"
           >
             {/* Prompt Header */}
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-white">Prompt {index + 1}</h3>
+              <div className="flex items-center gap-3">
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+                  prompt
+                    ? 'bg-gradient-to-r from-[#ff00ff] to-[#8b5cf6] text-white'
+                    : 'bg-[rgba(139,92,246,0.3)] text-gray-500'
+                }`}>
+                  {index + 1}
+                </span>
+                <h3 className="text-xl font-bold text-white">Prompt {index + 1}</h3>
+              </div>
               {prompt && (
                 <button
-                  onClick={() => copyPrompt(prompt)}
-                  className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors"
+                  onClick={() => copyPrompt(prompt, index)}
+                  className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all flex items-center gap-2 ${
+                    copiedIndex === index
+                      ? 'bg-[#4ecdc4] text-white'
+                      : 'bg-[rgba(139,92,246,0.3)] text-white hover:bg-[rgba(255,0,255,0.3)]'
+                  }`}
                 >
-                  📋 Copy
+                  {copiedIndex === index ? (
+                    <>✓ Copied!</>
+                  ) : (
+                    <>📋 Copy</>
+                  )}
                 </button>
               )}
             </div>
 
             {/* Prompt Display */}
             {prompt ? (
-              <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700 text-gray-300 text-sm max-h-48 overflow-y-auto">
+              <div className="mb-5 p-4 bg-[rgba(10,0,21,0.6)] rounded-xl border border-[rgba(139,92,246,0.2)] text-gray-300 text-sm max-h-48 overflow-y-auto leading-relaxed">
                 {prompt}
               </div>
             ) : (
-              <div className="mb-4 p-4 bg-gray-900 rounded-lg border border-gray-700 text-gray-500 text-sm text-center italic">
+              <div className="mb-5 p-6 bg-[rgba(10,0,21,0.4)] rounded-xl border border-dashed border-[rgba(139,92,246,0.3)] text-gray-500 text-sm text-center">
+                <span className="text-2xl block mb-2">💭</span>
                 Prompt will appear here...
               </div>
             )}
 
             {/* Image Generation Buttons */}
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => generateImage(index, 'pro')}
                 disabled={!prompt || generatingImages[index]}
-                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-lg transition-all disabled:cursor-not-allowed"
+                className={`px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                  !prompt || generatingImages[index]
+                    ? 'bg-[rgba(139,92,246,0.2)] text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#ff00ff] to-[#8b5cf6] text-white hover:shadow-lg hover:shadow-[rgba(255,0,255,0.3)]'
+                }`}
               >
                 {generatingImages[index] ? (
-                  <span className="flex items-center justify-center space-x-2">
+                  <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>Generating...</span>
-                  </span>
+                  </>
                 ) : (
-                  '🍌 Generate with Nano Banana Pro'
+                  <>
+                    <span>🍌</span>
+                    <span>Pro (2K)</span>
+                  </>
                 )}
               </button>
               <button
                 onClick={() => generateImage(index, 'regular')}
                 disabled={!prompt || generatingImages[index]}
-                className="w-full px-4 py-3 bg-gradient-to-r from-green-600 to-teal-600 hover:from-green-500 hover:to-teal-500 disabled:from-gray-600 disabled:to-gray-600 text-white font-semibold rounded-lg transition-all disabled:cursor-not-allowed"
+                className={`px-4 py-3 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 ${
+                  !prompt || generatingImages[index]
+                    ? 'bg-[rgba(0,255,255,0.2)] text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#00ffff] to-[#3b82f6] text-white hover:shadow-lg hover:shadow-[rgba(0,255,255,0.3)]'
+                }`}
               >
                 {generatingImages[index] ? (
-                  <span className="flex items-center justify-center space-x-2">
+                  <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     <span>Generating...</span>
-                  </span>
+                  </>
                 ) : (
-                  '🍌 Generate with Nano Banana Regular'
+                  <>
+                    <span>🍌</span>
+                    <span>Regular (1K)</span>
+                  </>
                 )}
               </button>
             </div>
 
             {/* Generated Image Display */}
             {generatedImages[index] && (
-              <div className="mt-4 rounded-lg overflow-hidden border border-gray-700">
+              <div className="mt-5 image-glow">
                 <img
                   src={generatedImages[index]}
                   alt={`Generated ${index + 1}`}
                   className="w-full h-auto"
                 />
-                <div className="bg-gray-900 p-2 flex justify-between">
+                <div className="bg-[rgba(10,0,21,0.8)] p-3 flex justify-between items-center">
                   <a
                     href={generatedImages[index]}
                     download={`character-${index + 1}.png`}
-                    className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white text-sm rounded transition-colors"
+                    className="px-4 py-2 bg-gradient-to-r from-[#8b5cf6] to-[#a855f7] text-white text-sm rounded-lg font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
                   >
                     💾 Download
                   </a>
@@ -203,9 +240,9 @@ export default function PromptGenerator({ characterData, attributes }) {
                     href={generatedImages[index]}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded transition-colors"
+                    className="px-4 py-2 bg-gradient-to-r from-[#00ffff] to-[#3b82f6] text-white text-sm rounded-lg font-semibold hover:opacity-90 transition-opacity flex items-center gap-2"
                   >
-                    🔍 View Full Size
+                    🔍 Full Size
                   </a>
                 </div>
               </div>
