@@ -222,6 +222,21 @@ export default function Home() {
   const [showResults, setShowResults] = useState(false);
   const searchRef = useRef(null);
 
+  // Character database pagination state
+  const [dbCharacters, setDbCharacters] = useState([]);
+  const [dbPagination, setDbPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false,
+  });
+  const [dbCategory, setDbCategory] = useState('all');
+  const [dbCategories, setDbCategories] = useState([]);
+  const [isLoadingDb, setIsLoadingDb] = useState(false);
+  const [dbError, setDbError] = useState(null);
+
   // Prompt state
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
@@ -245,32 +260,70 @@ export default function Home() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Search characters in Neon DB
+  // Load categories on mount
   useEffect(() => {
-    if (character.searchQuery.length < 2) {
-      setSearchResults([]);
-      setShowResults(false);
+    const loadCategories = async () => {
+      try {
+        const response = await fetch('/api/characters/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setDbCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Error loading categories:', error);
+      }
+    };
+    loadCategories();
+  }, []);
+
+  // Load characters when switching to Existing mode or changing category/page
+  useEffect(() => {
+    if (character.isNew) return;
+
+    const loadCharacters = async () => {
+      setIsLoadingDb(true);
+      setDbError(null);
+      try {
+        const params = new URLSearchParams({
+          page: dbPagination.page.toString(),
+          limit: '20',
+          category: dbCategory,
+          q: character.searchQuery || '',
+        });
+
+        const response = await fetch(`/api/characters/search?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDbCharacters(data.characters || []);
+          setDbPagination(data.pagination || dbPagination);
+          if (data.error) {
+            setDbError(data.error);
+          }
+        } else {
+          setDbError('Failed to load characters');
+        }
+      } catch (error) {
+        console.error('Error loading characters:', error);
+        setDbError('Connection error. Please check your database connection.');
+      } finally {
+        setIsLoadingDb(false);
+      }
+    };
+
+    loadCharacters();
+  }, [character.isNew, dbCategory, dbPagination.page, character.searchQuery]);
+
+  // Search characters in Neon DB (for search input)
+  useEffect(() => {
+    if (character.isNew) return;
+    if (character.searchQuery.length < 2 && character.searchQuery.length > 0) {
       return;
     }
 
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const response = await fetch(`/api/characters/search?q=${encodeURIComponent(character.searchQuery)}`);
-        if (response.ok) {
-          const data = await response.json();
-          setSearchResults(data.characters || []);
-          setShowResults(true);
-        }
-      } catch (error) {
-        console.error('Search error:', error);
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
+    // Reset to page 1 when search query changes
+    if (dbPagination.page !== 1) {
+      setDbPagination(prev => ({ ...prev, page: 1 }));
+    }
   }, [character.searchQuery]);
 
   // Navigation functions
@@ -785,50 +838,158 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="cyber-search-container" ref={searchRef}>
-              <input
-                type="text"
-                className="cyber-input"
-                placeholder="Search character name or show in database..."
-                value={character.searchQuery}
-                onChange={(e) => setCharacter(p => ({ ...p, searchQuery: e.target.value }))}
-                onFocus={() => searchResults.length > 0 && setShowResults(true)}
-              />
-              {isSearching && (
-                <div className="cyber-search-loading">
-                  <span className="cyber-loading-dot"></span>
-                  <span className="cyber-loading-dot"></span>
-                  <span className="cyber-loading-dot"></span>
-                </div>
-              )}
-
-              {showResults && searchResults.length > 0 && (
-                <div className="cyber-search-results">
-                  {searchResults.map((char, index) => (
-                    <div
-                      key={index}
-                      className="cyber-search-item"
-                      onClick={() => handleSelectCharacter(char)}
-                    >
-                      <div>
-                        <div className="cyber-search-name">{char.Character}</div>
-                        <div className="cyber-search-show">{char.Show}</div>
-                      </div>
-                      <span className={`cyber-badge ${char.Gender === 'Fem' ? 'fem' : 'masc'}`}>
-                        {char.Gender}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
+            <div className="cyber-existing-character">
+              {/* Selected Character Display */}
               {character.selectedCharacter && (
                 <div className="cyber-selected-character">
                   <h3>{character.selectedCharacter.Character}</h3>
                   <p>from {character.selectedCharacter.Show}</p>
-                  <span className={`cyber-badge ${character.selectedCharacter.Gender === 'Fem' ? 'fem' : 'masc'}`}>
-                    {character.selectedCharacter.Gender}
-                  </span>
+                  <div className="cyber-selected-badges">
+                    <span className={`cyber-badge ${character.selectedCharacter.Gender === 'Fem' ? 'fem' : 'masc'}`}>
+                      {character.selectedCharacter.Gender}
+                    </span>
+                    {character.selectedCharacter.Category && (
+                      <span className="cyber-badge category">{character.selectedCharacter.Category}</span>
+                    )}
+                  </div>
+                  <button
+                    className="cyber-button cyber-button-small"
+                    onClick={() => setCharacter(p => ({ ...p, selectedCharacter: null }))}
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              )}
+
+              {/* Search Input */}
+              <div className="cyber-input-group">
+                <label>Search / Buscar</label>
+                <input
+                  type="text"
+                  className="cyber-input"
+                  placeholder="Type to search characters..."
+                  value={character.searchQuery}
+                  onChange={(e) => setCharacter(p => ({ ...p, searchQuery: e.target.value }))}
+                />
+              </div>
+
+              {/* Category Filter */}
+              <div className="cyber-category-filter">
+                <label>Category / Categoría:</label>
+                <div className="cyber-category-buttons">
+                  {dbCategories.map((cat) => (
+                    <button
+                      key={cat.Category}
+                      className={`cyber-category-btn ${dbCategory === cat.Category ? 'active' : ''}`}
+                      onClick={() => {
+                        setDbCategory(cat.Category);
+                        setDbPagination(p => ({ ...p, page: 1 }));
+                      }}
+                    >
+                      {cat.Category === 'all' ? '📁 All' : cat.Category}
+                      <span className="count">({cat.count})</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Error Display */}
+              {dbError && (
+                <div className="cyber-error">
+                  ⚠️ {dbError}
+                </div>
+              )}
+
+              {/* Loading State */}
+              {isLoadingDb && (
+                <div className="cyber-loading-container">
+                  <div className="cyber-loading">
+                    <span className="cyber-loading-dot"></span>
+                    <span className="cyber-loading-dot"></span>
+                    <span className="cyber-loading-dot"></span>
+                  </div>
+                  <span>Loading characters...</span>
+                </div>
+              )}
+
+              {/* Character List */}
+              {!isLoadingDb && dbCharacters.length > 0 && (
+                <div className="cyber-character-list">
+                  <div className="cyber-list-header">
+                    <span>Showing {dbCharacters.length} of {dbPagination.total} characters</span>
+                    <span>Page {dbPagination.page} of {dbPagination.totalPages}</span>
+                  </div>
+
+                  <div className="cyber-character-grid">
+                    {dbCharacters.map((char, index) => (
+                      <div
+                        key={index}
+                        className={`cyber-character-card ${character.selectedCharacter?.Character === char.Character ? 'selected' : ''}`}
+                        onClick={() => handleSelectCharacter(char)}
+                      >
+                        <div className="cyber-card-name">{char.Character}</div>
+                        <div className="cyber-card-show">{char.Show}</div>
+                        <div className="cyber-card-badges">
+                          <span className={`cyber-badge small ${char.Gender === 'Fem' ? 'fem' : 'masc'}`}>
+                            {char.Gender}
+                          </span>
+                          {char.Category && (
+                            <span className="cyber-badge small category">{char.Category}</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  <div className="cyber-pagination">
+                    <button
+                      className="cyber-button cyber-button-small"
+                      disabled={!dbPagination.hasPrev}
+                      onClick={() => setDbPagination(p => ({ ...p, page: p.page - 1 }))}
+                    >
+                      ← Prev
+                    </button>
+
+                    <div className="cyber-page-numbers">
+                      {Array.from({ length: Math.min(5, dbPagination.totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (dbPagination.totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (dbPagination.page <= 3) {
+                          pageNum = i + 1;
+                        } else if (dbPagination.page >= dbPagination.totalPages - 2) {
+                          pageNum = dbPagination.totalPages - 4 + i;
+                        } else {
+                          pageNum = dbPagination.page - 2 + i;
+                        }
+                        return (
+                          <button
+                            key={pageNum}
+                            className={`cyber-page-btn ${dbPagination.page === pageNum ? 'active' : ''}`}
+                            onClick={() => setDbPagination(p => ({ ...p, page: pageNum }))}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      className="cyber-button cyber-button-small"
+                      disabled={!dbPagination.hasNext}
+                      onClick={() => setDbPagination(p => ({ ...p, page: p.page + 1 }))}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* No Results */}
+              {!isLoadingDb && dbCharacters.length === 0 && !dbError && (
+                <div className="cyber-no-results">
+                  <p>No characters found. Try a different search or category.</p>
                 </div>
               )}
             </div>
