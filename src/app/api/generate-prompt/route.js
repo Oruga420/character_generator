@@ -4,16 +4,16 @@ import { generateImagePrompt } from '@/lib/groq';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { characterData, attributes } = body;
+    const { promptData } = body;
 
-    if (!characterData) {
+    if (!promptData) {
       return NextResponse.json(
-        { error: 'Character data is required' },
+        { error: 'Prompt data is required' },
         { status: 400 }
       );
     }
 
-    const prompt = await generateImagePrompt(characterData, attributes || {});
+    const prompt = await generateImagePrompt(promptData);
 
     return NextResponse.json({ prompt });
   } catch (error) {
